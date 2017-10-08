@@ -1,4 +1,4 @@
-package maijiaxiu.yjm.com.maijiaxiu;
+package com.maijiaxiu.yjm;
 
 import org.junit.Test;
 
