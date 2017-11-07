@@ -5,19 +5,30 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Binder;
 import android.os.Handler;
 import android.os.IBinder;
 import android.support.v4.app.NotificationCompat;
+import android.text.TextUtils;
 import android.util.Log;
 
 import com.maijiaxiu.yjm.entity.Category;
+import com.maijiaxiu.yjm.entity.User;
 import com.maijiaxiu.yjm.response.BaseResponse;
 import com.maijiaxiu.yjm.response.QueryCategoryResponse;
 
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.List;
+
+import okhttp3.Cookie;
+
 public class MaijiaxiuService extends Service {
 
-    //同时抢购的数量
-    private int orderSameTimeCount = 2;
+    private String keyWords;
+    private List<User> accountMap = new ArrayList<>();
+    private int index;
+    private int delayMilliSecond = 1000;
 
     public MaijiaxiuService() {
     }
@@ -43,8 +54,14 @@ public class MaijiaxiuService extends Service {
 
     @Override
     public IBinder onBind(Intent intent) {
-        // TODO: Return the communication channel to the service.
-        throw new UnsupportedOperationException("Not yet implemented");
+        return new MyBuild();
+    }
+
+
+    class MyBuild extends Binder {
+        public MaijiaxiuService getMyService() {
+            return MaijiaxiuService.this;
+        }
     }
 
     @Override
@@ -53,19 +70,46 @@ public class MaijiaxiuService extends Service {
         return START_STICKY;
     }
 
+
+    @Override
+    public boolean onUnbind(Intent intent) {
+        return super.onUnbind(intent);
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        delayMilliSecond = -1;
+    }
+
     private void query() {
+        int temp = index % accountMap.size();
+        User user = accountMap.get(temp);
+        RetrofitService.getInstance().setCurrentUser(user);
+        Log.d("yjm", "query username=" + RetrofitService.getInstance().getCurrentUser().name);
+        List<Cookie> cookieList = RetrofitService.getInstance().getUserCookie();
+        index++;
+        if (index > accountMap.size()) {
+            index = 0;
+        }
+
+        if(user.completOrder >= 2){
+            accountMap.remove(temp);
+        }
+        if (cookieList == null || cookieList.size() == 0) {
+            delayQuery();
+            return;
+        }
         RetrofitService.getInstance().queryAuctionCategory(new INetWorkCallback<QueryCategoryResponse>() {
             @Override
             public void onResponse(QueryCategoryResponse queryCategoryResponse) {
                 boolean hasAuction = false;
                 if (queryCategoryResponse.count == 0) {
-                    Log.d("yjm", "沒用商品");
+                    Log.d("yjm", "无商品");
                 } else {
-                    int i = 0;
                     for (Category category : queryCategoryResponse.data) {
-                        if (category.type.equals("A") && i < orderSameTimeCount) {
+                        if ((category.type.equals("A") || isTargetGoods(category.shortName))){
                             hasAuction = true;
-                            i++;
                             fireAnOrder(category);
                         }
                     }
@@ -85,13 +129,37 @@ public class MaijiaxiuService extends Service {
     }
 
     private void delayQuery() {
+
+        if(delayMilliSecond == -1){
+            return;
+        }
+
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTimeInMillis(System.currentTimeMillis());
+
+        int hours = calendar.get(Calendar.HOUR_OF_DAY);
+        int minutes = calendar.get(Calendar.MINUTE);
+
+        if (minutes <= 10 || minutes >= 55) {
+            delayMilliSecond = 0;
+        } else {
+            delayMilliSecond = 2000;
+        }
+        if (hours >= 0 && hours < 8) {
+            delayMilliSecond = 60 * 60 * 1000;
+        }
+
+
+
         new Handler().postDelayed(new Runnable() {
             @Override
             public void run() {
                 query();
             }
-        }, 2000);
+        }, delayMilliSecond);
+
     }
+
 
     private void sendNotification(Category category) {
         //获取NotificationManager实例
@@ -103,28 +171,52 @@ public class MaijiaxiuService extends Service {
                 //设置通知标题
                 .setContentTitle("刷单成功")
                 //设置通知内容
-                .setContentText(category.shortName);
+                .setContentText(RetrofitService.getInstance().getCurrentUser().name + "------" + category.shortName)
+                .setWhen(System.currentTimeMillis())
+                .setShowWhen(true);
         //设置通知时间，默认为系统发出通知的时间，通常不用设置
-        //.setWhen(System.currentTimeMillis());
         //通过builder.build()方法生成Notification对象,并发送通知,id=1
-        notifyManager.notify(1, builder.build());
+        notifyManager.notify(category.id, builder.build());
     }
 
     private void fireAnOrder(final Category category) {
         RetrofitService.getInstance().fireAnOrder(String.valueOf(category.id), category.ids.split(","), new INetWorkCallback<BaseResponse>() {
             @Override
             public void onResponse(BaseResponse baseResponse) {
-                delayQuery();
-                sendNotification(category);
                 if (baseResponse.code >= 200 && baseResponse.code < 300) {
 
                 }
+                sendNotification(category);
+                RetrofitService.getInstance().getCurrentUser().completOrder++;
+                delayQuery();
             }
 
             @Override
             public void onFailure(String errorMsg) {
+                //出錯
                 delayQuery();
             }
         });
+    }
+
+    private boolean isTargetGoods(String shortName) {
+        if (TextUtils.isEmpty(keyWords)) {
+            return false;
+        }
+        String[] keyArray = keyWords.split("#");
+        for (String key : keyArray) {
+            if (shortName.contains(key) || key.contains(shortName)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public void setKeyWord(String keyWord) {
+        this.keyWords = keyWord;
+    }
+
+    public void setAccountMap(List<User> accountMap) {
+        this.accountMap = accountMap;
     }
 }

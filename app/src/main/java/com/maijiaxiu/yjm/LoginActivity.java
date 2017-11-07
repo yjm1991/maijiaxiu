@@ -14,6 +14,7 @@ import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.maijiaxiu.yjm.request.LoginRequest;
 
@@ -91,7 +92,6 @@ public class LoginActivity extends AppCompatActivity{
         RetrofitService.getInstance().login(new LoginRequest(email, "", password), new INetWorkCallback<Response>() {
             @Override
             public void onResponse(final Response response) {
-                startService(new Intent(LoginActivity.this, MaijiaxiuService.class));
                 startActivity(new Intent(LoginActivity.this, MainActivity.class));
                 showProgress(false);
                 finish();
@@ -100,6 +100,7 @@ public class LoginActivity extends AppCompatActivity{
             @Override
             public void onFailure(String errorMsg) {
                 showProgress(false);
+                Toast.makeText(LoginActivity.this, "error: " + errorMsg, Toast.LENGTH_SHORT).show();
             }
         });
     }

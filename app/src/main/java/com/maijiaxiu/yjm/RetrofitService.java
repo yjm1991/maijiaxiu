@@ -4,10 +4,12 @@ import android.util.Log;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.maijiaxiu.yjm.entity.User;
 import com.maijiaxiu.yjm.request.LoginRequest;
 import com.maijiaxiu.yjm.response.BaseResponse;
 import com.maijiaxiu.yjm.response.QueryCategoryResponse;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -38,42 +40,54 @@ public class RetrofitService {
     private final static int CONNECT_TIMEOUT = 10;
 
     private static RetrofitService mInstance;
+    private CookieJar mCookieJar;
+    private static HashMap<String, HashMap<String, List<Cookie>>> cookieHashMap = new HashMap<>();
 
+    private User currentUser;
 
     private RetrofitService() {
 
         Gson gson = new GsonBuilder()
                 .setLenient()
                 .create();
+        mCookieJar = new CookieJar() {
+
+            @Override
+            public void saveFromResponse(HttpUrl url, List<Cookie> cookies) {
+                Log.d("yjm2", "saveFromResponse currentUser: " + currentUser.name + "....." + url.toString());
+                HashMap<String, List<Cookie>> currentUserCookie = cookieHashMap.get(currentUser.name);
+                if (currentUserCookie == null) {
+                    HashMap<String, List<Cookie>> hashMap = new HashMap<>();
+                    hashMap.put(url.host(), cookies);
+                    cookieHashMap.put(currentUser.name, hashMap);
+                    return;
+                }
+                if (!currentUserCookie.containsKey(url.host())) {
+                    currentUserCookie.put(url.host(), cookies);
+                } else {
+
+                }
+            }
+
+            @Override
+            public List<Cookie> loadForRequest(HttpUrl url) {
+                Log.d("yjm2", "loadForRequest currentUser:" + currentUser.name + "....." + url.toString());
+                HashMap<String, List<Cookie>> currentUserCookie = cookieHashMap.get(currentUser.name);
+                if (currentUserCookie == null) {
+                    return new ArrayList<>();
+                }
+                List<Cookie> cookies = currentUserCookie.get(url.host());
+                return cookies != null ? cookies : new ArrayList<Cookie>();
+            }
+        };
 
         OkHttpClient.Builder builder = new OkHttpClient.Builder()
 //                .addInterceptor(new SaveCookiesInterceptor(applicationCtx))
 //                .addInterceptor(new ReadCookiesInterceptor(applicationCtx))
                 .readTimeout(READ_TIMEOUT, TimeUnit.SECONDS)
                 .connectTimeout(CONNECT_TIMEOUT, TimeUnit.SECONDS)
-                .cookieJar(new CookieJar() {
-                    private final HashMap<String, List<Cookie>> cookieStore = new HashMap<>();
-
-                    @Override
-                    public void saveFromResponse(HttpUrl url, List<Cookie> cookies) {
-                        Log.d("yjm2", "saveFromResponse: " + url.toString());
-                        if(!cookieStore.containsKey(url.host())){
-//                            List<Cookie> oldCookie = cookieStore.get(url.host());
-//                            cookieStore.put(url.host(), oldCookie);
-                            cookieStore.put(url.host(), cookies);
-                        } else{
-
-                        }
-                    }
-
-                    @Override
-                    public List<Cookie> loadForRequest(HttpUrl url) {
-                        Log.d("yjm2", "loadForRequest: " + url.toString());
-                        List<Cookie> cookies = cookieStore.get(url.host());
-                        return cookies != null ? cookies : new ArrayList<Cookie>();
-                    }
-                })
-                ;
+                .addInterceptor(new HeadersInterceptor())
+                .cookieJar(mCookieJar);
 
         HttpLoggingInterceptor httpLoggingInterceptor = new HttpLoggingInterceptor();
         httpLoggingInterceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
@@ -91,8 +105,8 @@ public class RetrofitService {
     }
 
 
-    public static RetrofitService getInstance(){
-        if(mInstance == null){
+    public static RetrofitService getInstance() {
+        if (mInstance == null) {
             mInstance = new RetrofitService();
         }
         return mInstance;
@@ -105,19 +119,23 @@ public class RetrofitService {
         loginMap.put("wechat_openID", loginRequest.wechatOpenID);
         loginMap.put("password", loginRequest.password);
         Call<BaseResponse> call = retrofitService.login(loginMap);
-        enqueue(call, callback);
+//        enqueue(call, callback);
+        try {
+            call.execute();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     //查询抢购商品列表
-    public void queryAuctionCategory(INetWorkCallback<QueryCategoryResponse> callback){
+    public void queryAuctionCategory(INetWorkCallback<QueryCategoryResponse> callback) {
         Call<QueryCategoryResponse> categoryResponseCall = retrofitService.queryAuctionCategory(1, 50);
         enqueue(categoryResponseCall, callback);
     }
 
-
     //抢购
-    public void fireAnOrder(String planId, String[] ids, INetWorkCallback<BaseResponse> callback){
-        if(ids == null || ids.length == 0){
+    public void fireAnOrder(String planId, String[] ids, INetWorkCallback<BaseResponse> callback) {
+        if (ids == null || ids.length == 0) {
             ids = new String[]{planId};
         }
         Call<BaseResponse> call = retrofitService.order(planId, ids);
@@ -134,9 +152,9 @@ public class RetrofitService {
                 Log.d("yjm", "code:" + response.code());
                 //保存header信息
                 if (response.code() >= 200 && response.code() < 300) {
-                    if(null != response.body()){
+                    if (null != response.body()) {
                         callback.onResponse(response.body());
-                    } else{
+                    } else {
                         callback.onResponse(response);
                     }
                 } else {
@@ -151,5 +169,23 @@ public class RetrofitService {
             }
         });
     }
+
+
+    public void setCurrentUser(User currentUser) {
+        this.currentUser = currentUser;
+    }
+
+    public User getCurrentUser() {
+        return this.currentUser;
+    }
+
+    public List<Cookie> getUserCookie() {
+        HashMap<String, List<Cookie>> cookie = cookieHashMap.get(currentUser.name);
+        if (cookie == null) {
+            return new ArrayList<>();
+        }
+        return cookieHashMap.get(currentUser.name).get("www.maijiaxiuwang.com");
+    }
+
 
 }

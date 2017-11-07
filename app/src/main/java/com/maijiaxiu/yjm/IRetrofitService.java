@@ -24,7 +24,7 @@ public interface IRetrofitService {
     Call<BaseResponse> login(@FieldMap Map<String, String> loginRequest);
 
     //获取商品列表
-    @GET("buyer/plan/type/now/category/photo")
+    @GET("/buyer/plan/type/A/category/A/stat/running")
     Call<QueryCategoryResponse> queryAuctionCategory(@Query("p") int p, @Query("pc") int pc);
 
     @FormUrlEncoded

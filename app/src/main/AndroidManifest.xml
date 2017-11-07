@@ -14,10 +14,6 @@
     <!-- 允许读取手机状态 用于创建BmobInstallation -->
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
 
-    <!-- To auto-complete the email text field in the login form with the user's emails -->
-    <uses-permission android:name="android.permission.GET_ACCOUNTS" />
-    <uses-permission android:name="android.permission.READ_PROFILE" />
-    <uses-permission android:name="android.permission.READ_CONTACTS" />
 
     <application
         android:name=".MyApplication"
@@ -27,7 +23,11 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
         <activity android:name=".MainActivity">
+            <intent-filter android:label="@string/app_name">
+                <action android:name="android.intent.action.MAIN" />
 
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
         </activity>
 
         <service
@@ -35,15 +35,29 @@
             android:enabled="true"
             android:exported="true" />
 
-        <activity
-            android:name=".LoginActivity"
-            android:label="@string/title_activity_login">
-            <intent-filter android:label="@string/app_name">
-                <action android:name="android.intent.action.MAIN" />
+        <!--<activity-->
+            <!--android:name=".LoginActivity"-->
+            <!--android:label="@string/title_activity_login">-->
+            <!--<intent-filter android:label="@string/app_name">-->
+                <!--<action android:name="android.intent.action.MAIN" />-->
 
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
+                <!--<category android:name="android.intent.category.LAUNCHER" />-->
+            <!--</intent-filter>-->
+        <!--</activity>-->
+
+        <activity
+            android:name="cn.bmob.v3.update.UpdateDialogActivity"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" >
         </activity>
+
+        <provider
+            android:authorities="cn.bmob.update.fileprovider"           android:name="android.support.v4.content.FileProvider"
+            android:grantUriPermissions="true"
+            android:exported="false">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 
 </manifest>
