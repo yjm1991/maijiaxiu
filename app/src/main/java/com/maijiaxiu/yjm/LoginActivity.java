@@ -2,6 +2,7 @@ package com.maijiaxiu.yjm;
 
 import android.annotation.TargetApi;
 import android.content.Intent;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
@@ -16,15 +17,22 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.maijiaxiu.yjm.entity.User;
 import com.maijiaxiu.yjm.request.LoginRequest;
 
+
 import retrofit2.Response;
+import rx.Observable;
+import rx.Subscriber;
+import rx.android.schedulers.AndroidSchedulers;
+import rx.functions.Action1;
+import rx.schedulers.Schedulers;
 
 
 /**
  * A login screen that offers login via email/password.
  */
-public class LoginActivity extends AppCompatActivity{
+public class LoginActivity extends AppCompatActivity {
 
     // UI references.
     private AutoCompleteTextView mEmailView;
@@ -74,8 +82,8 @@ public class LoginActivity extends AppCompatActivity{
         mPasswordView.setError(null);
 
         // Store values at the time of the login attempt.
-        String email = mEmailView.getText().toString();
-        String password = mPasswordView.getText().toString();
+        final String email = mEmailView.getText().toString();
+        final String password = mPasswordView.getText().toString();
 
 
         // Check for a valid password, if the user entered one.
@@ -87,28 +95,16 @@ public class LoginActivity extends AppCompatActivity{
         if (TextUtils.isEmpty(email)) {
             mEmailView.setError(getString(R.string.error_field_required));
         }
-        showProgress(true);
-
-        RetrofitService.getInstance().login(new LoginRequest(email, "", password), new INetWorkCallback<Response>() {
-            @Override
-            public void onResponse(final Response response) {
-                startActivity(new Intent(LoginActivity.this, MainActivity.class));
-                showProgress(false);
-                finish();
-            }
-
-            @Override
-            public void onFailure(String errorMsg) {
-                showProgress(false);
-                Toast.makeText(LoginActivity.this, "error: " + errorMsg, Toast.LENGTH_SHORT).show();
-            }
-        });
+        Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+        intent.putExtra("user", new User(email, password));
+        startActivity(intent);
+        finish();
     }
 
 
     private boolean isPasswordValid(String password) {
         //TODO: Replace this with your own logic
-        return password.length() > 4;
+        return password.length() > 1;
     }
 
     /**

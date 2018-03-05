@@ -17,6 +17,12 @@ import com.maijiaxiu.yjm.entity.User;
 import com.maijiaxiu.yjm.response.BaseResponse;
 import com.maijiaxiu.yjm.response.QueryCategoryResponse;
 
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
+
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
@@ -28,7 +34,9 @@ public class MaijiaxiuService extends Service {
     private String keyWords;
     private List<User> accountMap = new ArrayList<>();
     private int index;
-    private int delayMilliSecond = 1000;
+    private int delayMilliSecond = 300;
+
+    private Handler handler = new Handler();
 
     public MaijiaxiuService() {
     }
@@ -93,9 +101,9 @@ public class MaijiaxiuService extends Service {
             index = 0;
         }
 
-        if(user.completOrder >= 2){
-            accountMap.remove(temp);
-        }
+//        if(user.completOrder >= 2){
+//            accountMap.remove(temp);
+//        }
         if (cookieList == null || cookieList.size() == 0) {
             delayQuery();
             return;
@@ -108,9 +116,9 @@ public class MaijiaxiuService extends Service {
                     Log.d("yjm", "无商品");
                 } else {
                     for (Category category : queryCategoryResponse.data) {
-                        if ((category.type.equals("A") || isTargetGoods(category.shortName))){
+                        if ((category.type.equals("A") || isTargetGoods(category.shortName))) {
                             hasAuction = true;
-                            fireAnOrder(category);
+                            getToken(category);
                         }
                     }
                 }
@@ -122,7 +130,10 @@ public class MaijiaxiuService extends Service {
 
             @Override
             public void onFailure(String errorMsg) {
-                Log.d("yjm", "query onFailure: " + errorMsg);
+                if (errorMsg.equals("code:429")) {
+                    delayMilliSecond += 100;
+                    handler.removeCallbacksAndMessages(null);
+                }
                 delayQuery();
             }
         });
@@ -130,7 +141,7 @@ public class MaijiaxiuService extends Service {
 
     private void delayQuery() {
 
-        if(delayMilliSecond == -1){
+        if (delayMilliSecond == -1) {
             return;
         }
 
@@ -140,18 +151,12 @@ public class MaijiaxiuService extends Service {
         int hours = calendar.get(Calendar.HOUR_OF_DAY);
         int minutes = calendar.get(Calendar.MINUTE);
 
-        if (minutes <= 10 || minutes >= 55) {
-            delayMilliSecond = 0;
-        } else {
-            delayMilliSecond = 2000;
-        }
         if (hours >= 0 && hours < 8) {
             delayMilliSecond = 60 * 60 * 1000;
         }
 
 
-
-        new Handler().postDelayed(new Runnable() {
+        handler.postDelayed(new Runnable() {
             @Override
             public void run() {
                 query();
@@ -179,21 +184,45 @@ public class MaijiaxiuService extends Service {
         notifyManager.notify(category.id, builder.build());
     }
 
-    private void fireAnOrder(final Category category) {
-        RetrofitService.getInstance().fireAnOrder(String.valueOf(category.id), category.ids.split(","), new INetWorkCallback<BaseResponse>() {
+    private void fireAnOrder(final Category category, String token) {
+        RetrofitService.getInstance().fireAnOrder(String.valueOf(category.id), category.ids.split(","), token, new INetWorkCallback<BaseResponse>() {
             @Override
             public void onResponse(BaseResponse baseResponse) {
                 if (baseResponse.code >= 200 && baseResponse.code < 300) {
 
                 }
                 sendNotification(category);
-                RetrofitService.getInstance().getCurrentUser().completOrder++;
+                RetrofitService.getInstance().getCurrentUser().complementOrder++;
                 delayQuery();
             }
 
             @Override
             public void onFailure(String errorMsg) {
                 //出錯
+                if (errorMsg.equals("code:429")) {
+                    delayMilliSecond += 100;
+                    if(delayMilliSecond >= 1000){
+                        delayMilliSecond = 300;
+                    }
+                    handler.removeCallbacksAndMessages(null);
+                }
+                delayQuery();
+            }
+        });
+    }
+
+    private void getToken(final Category category) {
+        RetrofitService.getToken(String.valueOf(category.id), category.ids.split(","), new INetWorkCallback<String>() {
+            @Override
+            public void onResponse(String html) {
+                Document document = Jsoup.parse(html);
+                String dataToken = document.getElementById("app").attr("data-token");
+                Log.d("yjm", "dataToken=" + dataToken);
+                fireAnOrder(category, dataToken);
+            }
+
+            @Override
+            public void onFailure(String errorMsg) {
                 delayQuery();
             }
         });

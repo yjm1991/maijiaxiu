@@ -27,6 +27,7 @@
        android:id="@+id/add_contact_btn"
        android:layout_width="wrap_content"
        android:layout_height="wrap_content"
+       android:visibility="gone"
        android:text="一键添加账号"/>
 
    <Button

@@ -10,7 +10,9 @@ import retrofit2.http.Field;
 import retrofit2.http.FieldMap;
 import retrofit2.http.FormUrlEncoded;
 import retrofit2.http.GET;
+import retrofit2.http.Header;
 import retrofit2.http.PUT;
+import retrofit2.http.Path;
 import retrofit2.http.Query;
 
 /**
@@ -29,5 +31,10 @@ public interface IRetrofitService {
 
     @FormUrlEncoded
     @PUT("/buyer/task")
-    Call<BaseResponse> order(@Field("plan_id") String planId, @Field("plan_ids[]") String[] planIds);
+    Call<BaseResponse> order(@Header("Referer") String referer, @Field("plan_id") String planId, @Field("_token") String token, @Field("plan_ids[]") String[] planIds);
+
+    @GET("/buyer/plan/{id}?show_type=now")
+    Call<String> getHtml(@Path("id") String id, @Query("ids") String ids);
+
+
 }
