@@ -119,7 +119,7 @@ public class MaijiaxiuService extends Service {
                     Log.d("yjm", "无商品");
                 } else {
                     for (Category category : queryCategoryResponse.data) {
-                        if (/*category.type.equals("A") ||*/ isTargetGoods(category.shortName)) {
+                        if (category.type.equals("A") || isTargetGoods(category.shortName)) {
                             hasAuction = true;
                             getToken(user, category);
                         }

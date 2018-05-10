@@ -132,15 +132,17 @@ public class RetrofitService {
 
     //查询抢购商品列表
     public void queryAuctionCategory(INetWorkCallback<QueryCategoryResponse> callback) {
-        if(fireCount % 2 == 0){
-            fireCount = 1;
-            Call<QueryCategoryResponse> categoryResponseCall = retrofitService.queryFreeGoods();
-            enqueue(categoryResponseCall, callback);
-        } else{
-            Call<QueryCategoryResponse> categoryResponseCall = retrofitService.queryMoneyGoods();
-            enqueue(categoryResponseCall, callback);
-            fireCount++;
-        }
+//        if(fireCount % 2 == 0){
+//            fireCount = 1;
+//            Call<QueryCategoryResponse> categoryResponseCall = retrofitService.queryFreeGoods();
+//            enqueue(categoryResponseCall, callback);
+//        } else{
+//            Call<QueryCategoryResponse> categoryResponseCall = retrofitService.queryMoneyGoods();
+//            enqueue(categoryResponseCall, callback);
+//            fireCount++;
+//        }
+        Call<QueryCategoryResponse> categoryResponseCall = retrofitService.queryMoneyGoods();
+        enqueue(categoryResponseCall, callback);
     }
 
     //抢购
