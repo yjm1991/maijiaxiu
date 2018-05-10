@@ -1,12 +1,15 @@
 package com.maijiaxiu.yjm;
 
 import android.annotation.TargetApi;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -21,6 +24,17 @@ import com.maijiaxiu.yjm.entity.User;
 import com.maijiaxiu.yjm.request.LoginRequest;
 
 
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.List;
+
+import cn.bmob.v3.BmobQuery;
+import cn.bmob.v3.datatype.BmobDate;
+import cn.bmob.v3.exception.BmobException;
+import cn.bmob.v3.listener.FindListener;
+import cn.bmob.v3.listener.SaveListener;
+import cn.bmob.v3.listener.UpdateListener;
 import retrofit2.Response;
 import rx.Observable;
 import rx.Subscriber;
@@ -39,15 +53,16 @@ public class LoginActivity extends AppCompatActivity {
     private EditText mPasswordView;
     private View mProgressView;
     private View mLoginFormView;
+    private SharedPreferences mSharedPreferences;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
         // Set up the login form.
-        mEmailView = (AutoCompleteTextView) findViewById(R.id.email);
+        mEmailView = findViewById(R.id.email);
 
-        mPasswordView = (EditText) findViewById(R.id.password);
+        mPasswordView = findViewById(R.id.password);
         mPasswordView.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
             public boolean onEditorAction(TextView textView, int id, KeyEvent keyEvent) {
@@ -69,6 +84,15 @@ public class LoginActivity extends AppCompatActivity {
 
         mLoginFormView = findViewById(R.id.login_form);
         mProgressView = findViewById(R.id.login_progress);
+
+        mSharedPreferences = getSharedPreferences("maijiaxiu", Context.MODE_PRIVATE);
+
+
+        if(!TextUtils.isEmpty(mSharedPreferences.getString("name", ""))){
+            mEmailView.setText(mSharedPreferences.getString("name", ""));
+            mPasswordView.setText(mSharedPreferences.getString("password", ""));
+        }
+
     }
 
     /**
@@ -95,10 +119,11 @@ public class LoginActivity extends AppCompatActivity {
         if (TextUtils.isEmpty(email)) {
             mEmailView.setError(getString(R.string.error_field_required));
         }
-        Intent intent = new Intent(LoginActivity.this, MainActivity.class);
-        intent.putExtra("user", new User(email, password));
-        startActivity(intent);
-        finish();
+        insertOrUpdate(new User(email, password));
+        if(TextUtils.isEmpty(mSharedPreferences.getString("name", ""))){
+            mSharedPreferences.edit().putString("name", email).apply();
+            mSharedPreferences.edit().putString("password", password).apply();
+        }
     }
 
 
@@ -117,6 +142,51 @@ public class LoginActivity extends AppCompatActivity {
         // the progress spinner.
         mProgressView.setVisibility(show ? View.VISIBLE : View.GONE);
         mLoginFormView.setVisibility(show ? View.GONE : View.VISIBLE);
+    }
+
+
+    private void insertOrUpdate(final User user){
+        BmobQuery<User> query = new BmobQuery<>();
+        query.addWhereEqualTo("name", user.name);
+        query.setLimit(1);
+        query.findObjects(new FindListener<User>() {
+            @Override
+            public void done(List<User> list, BmobException e) {
+                if(list == null || list.size() == 0){
+                    SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                    String currentTime = simpleDateFormat.format(Calendar.getInstance().getTime());
+                    user.setCreatedAt(currentTime);
+                    user.setUpdatedAt(currentTime);
+                    user.expireDate = new BmobDate(new Date(Calendar.getInstance().getTimeInMillis() + 7 * 24 * 60 * 60 * 1000));
+                    user.save(new SaveListener<String>() {
+                        @Override
+                        public void done(String s, BmobException e) {
+                           goToMainActivity(user);
+                        }
+                    });
+                } else{
+                    User userNew = list.get(0);
+                    userNew.setValue("password", user.password);
+                    userNew.update(userNew.getObjectId(),new UpdateListener() {
+                        @Override
+                        public void done(BmobException e) {
+                            if(e != null){
+                                Log.e("yjm", e.getMessage());
+                            }
+                        }
+                    });
+                    goToMainActivity(userNew);
+                }
+
+            }
+        });
+    }
+
+    private void goToMainActivity(User user){
+        Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+        intent.putExtra("user", user);
+        startActivity(intent);
+        finish();
     }
 
 }

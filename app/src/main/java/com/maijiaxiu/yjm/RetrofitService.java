@@ -128,10 +128,19 @@ public class RetrofitService {
 //        }
     }
 
+    private volatile int fireCount = 1;
+
     //查询抢购商品列表
     public void queryAuctionCategory(INetWorkCallback<QueryCategoryResponse> callback) {
-        Call<QueryCategoryResponse> categoryResponseCall = retrofitService.queryAuctionCategory(1, 50);
-        enqueue(categoryResponseCall, callback);
+        if(fireCount % 2 == 0){
+            fireCount = 1;
+            Call<QueryCategoryResponse> categoryResponseCall = retrofitService.queryFreeGoods();
+            enqueue(categoryResponseCall, callback);
+        } else{
+            Call<QueryCategoryResponse> categoryResponseCall = retrofitService.queryMoneyGoods();
+            enqueue(categoryResponseCall, callback);
+            fireCount++;
+        }
     }
 
     //抢购

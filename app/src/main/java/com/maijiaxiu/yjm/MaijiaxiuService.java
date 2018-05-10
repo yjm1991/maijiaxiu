@@ -26,13 +26,14 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import okhttp3.Cookie;
 
 public class MaijiaxiuService extends Service {
 
     private String keyWords;
-    private List<User> accountMap = new ArrayList<>();
+    private List<User> accountMap = new CopyOnWriteArrayList<>();
     private int index;
     private int delayMilliSecond = 300;
 
@@ -57,6 +58,7 @@ public class MaijiaxiuService extends Service {
                 .setContentIntent(pendingIntent);
 
         startForeground(1, builder.build());
+        delayMilliSecond = MyApplication.mConfiguration.delayRateInMills;
     }
 
 
@@ -91,8 +93,9 @@ public class MaijiaxiuService extends Service {
     }
 
     private void query() {
+        //FIXME acco
         int temp = index % accountMap.size();
-        User user = accountMap.get(temp);
+        final User user = accountMap.get(temp);
         RetrofitService.getInstance().setCurrentUser(user);
         Log.d("yjm", "query username=" + RetrofitService.getInstance().getCurrentUser().name);
         List<Cookie> cookieList = RetrofitService.getInstance().getUserCookie();
@@ -116,9 +119,9 @@ public class MaijiaxiuService extends Service {
                     Log.d("yjm", "无商品");
                 } else {
                     for (Category category : queryCategoryResponse.data) {
-                        if ((category.type.equals("A") || isTargetGoods(category.shortName))) {
+                        if (/*category.type.equals("A") ||*/ isTargetGoods(category.shortName)) {
                             hasAuction = true;
-                            getToken(category);
+                            getToken(user, category);
                         }
                     }
                 }
@@ -166,7 +169,7 @@ public class MaijiaxiuService extends Service {
     }
 
 
-    private void sendNotification(Category category) {
+    private void sendNotification(User user, Category category) {
         //获取NotificationManager实例
         NotificationManager notifyManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         //实例化NotificationCompat.Builde并设置相关属性
@@ -176,7 +179,7 @@ public class MaijiaxiuService extends Service {
                 //设置通知标题
                 .setContentTitle("刷单成功")
                 //设置通知内容
-                .setContentText(RetrofitService.getInstance().getCurrentUser().name + "------" + category.shortName)
+                .setContentText(user.name + "------" + category.shortName)
                 .setWhen(System.currentTimeMillis())
                 .setShowWhen(true);
         //设置通知时间，默认为系统发出通知的时间，通常不用设置
@@ -184,14 +187,14 @@ public class MaijiaxiuService extends Service {
         notifyManager.notify(category.id, builder.build());
     }
 
-    private void fireAnOrder(final Category category, String token) {
+    private void fireAnOrder(final User user, final Category category, String token) {
         RetrofitService.getInstance().fireAnOrder(String.valueOf(category.id), category.ids.split(","), token, new INetWorkCallback<BaseResponse>() {
             @Override
             public void onResponse(BaseResponse baseResponse) {
                 if (baseResponse.code >= 200 && baseResponse.code < 300) {
 
                 }
-                sendNotification(category);
+                sendNotification(user, category);
                 RetrofitService.getInstance().getCurrentUser().complementOrder++;
                 delayQuery();
             }
@@ -201,8 +204,8 @@ public class MaijiaxiuService extends Service {
                 //出錯
                 if (errorMsg.equals("code:429")) {
                     delayMilliSecond += 100;
-                    if(delayMilliSecond >= 1000){
-                        delayMilliSecond = 300;
+                    if(delayMilliSecond >= 2000){
+                        delayMilliSecond = MyApplication.mConfiguration.delayRateInMills;
                     }
                     handler.removeCallbacksAndMessages(null);
                 }
@@ -211,14 +214,14 @@ public class MaijiaxiuService extends Service {
         });
     }
 
-    private void getToken(final Category category) {
+    private void getToken(final User user, final Category category) {
         RetrofitService.getToken(String.valueOf(category.id), category.ids.split(","), new INetWorkCallback<String>() {
             @Override
             public void onResponse(String html) {
                 Document document = Jsoup.parse(html);
                 String dataToken = document.getElementById("app").attr("data-token");
                 Log.d("yjm", "dataToken=" + dataToken);
-                fireAnOrder(category, dataToken);
+                fireAnOrder(user, category, dataToken);
             }
 
             @Override
@@ -232,7 +235,7 @@ public class MaijiaxiuService extends Service {
         if (TextUtils.isEmpty(keyWords)) {
             return false;
         }
-        String[] keyArray = keyWords.split("#");
+        String[] keyArray = keyWords.split(" ");
         for (String key : keyArray) {
             if (shortName.contains(key) || key.contains(shortName)) {
                 return true;

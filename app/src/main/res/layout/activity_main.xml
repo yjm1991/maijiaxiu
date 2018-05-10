@@ -1,43 +1,97 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:gravity="center"
+    android:gravity="center_horizontal"
     tools:context="com.maijiaxiu.yjm.MainActivity">
 
-   <EditText
-       android:id="@+id/key_word_et"
+   <ScrollView
        android:layout_width="match_parent"
-       android:layout_height="60dp"
-       android:hint="输入关键字以#分隔"
-       />
+       android:layout_height="160dp">
 
-   <Button
-       android:id="@+id/sure_btn"
+      <TextView
+          android:id="@+id/tips_tv"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          tools:text="hello world"
+          android:padding="16dp"
+          android:textStyle="bold"
+          android:textSize="16sp"
+          android:textColor="@android:color/holo_red_dark"
+          android:layout_gravity="center"
+          />
+
+   </ScrollView>
+
+   <TextView
        android:layout_width="wrap_content"
        android:layout_height="wrap_content"
-       android:text="确定"
+       android:text="扫描下方的二维码加入群聊，交流使用经验和获取奖励"
+       />
+
+   <ImageView
+       android:id="@+id/qr_code_iv"
+       android:layout_marginTop="10dp"
+       android:layout_width="120dp"
+       android:layout_height="120dp"
+       tools:src="@android:drawable/alert_dark_frame"
        android:layout_gravity="center"
        />
 
-   <Button
-       android:id="@+id/add_contact_btn"
-       android:layout_width="wrap_content"
+   <LinearLayout
+       android:layout_width="match_parent"
        android:layout_height="wrap_content"
-       android:visibility="gone"
-       android:text="一键添加账号"/>
+       android:orientation="horizontal"
+       android:layout_marginTop="20dp"
+       android:gravity="center"
+       >
+      <EditText
+          android:id="@+id/invite_code_et"
+          android:layout_width="260dp"
+          android:layout_height="60dp"
+          android:textSize="14sp"
+          android:hint="输入邀请人手机号获取奖励"
+          />
+
+      <Button
+          android:id="@+id/invite_sure_btn"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="确定"
+          />
+   </LinearLayout>
+
+
+   <LinearLayout
+       android:layout_width="match_parent"
+       android:layout_height="wrap_content"
+       android:orientation="horizontal"
+       android:layout_marginTop="20dp"
+       android:gravity="center"
+       >
+      <EditText
+          android:id="@+id/key_word_et"
+          android:layout_width="260dp"
+          android:layout_height="60dp"
+          android:hint="输入关键字以空格分隔"
+          />
+
+      <Button
+          android:id="@+id/sure_btn"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="确定"
+          />
+   </LinearLayout>
+
 
    <Button
        android:id="@+id/stop_btn"
        android:layout_width="wrap_content"
        android:layout_height="wrap_content"
        android:text="停止刷单"
+       android:layout_gravity="center"
        />
-
-
-
-
 </LinearLayout>

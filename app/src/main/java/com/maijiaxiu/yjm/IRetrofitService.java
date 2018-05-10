@@ -25,9 +25,13 @@ public interface IRetrofitService {
     @PUT("/common/buyer/login")
     Call<BaseResponse> login(@FieldMap Map<String, String> loginRequest);
 
-    //获取商品列表
+    //获取商品列表  试客专区
+    @GET("/buyer/plan/type/A/category/T/stat/running")
+    Call<QueryCategoryResponse> queryFreeGoods();
+
+    //获取商品列表  图文评测
     @GET("/buyer/plan/type/A/category/A/stat/running")
-    Call<QueryCategoryResponse> queryAuctionCategory(@Query("p") int p, @Query("pc") int pc);
+    Call<QueryCategoryResponse> queryMoneyGoods();
 
     @FormUrlEncoded
     @PUT("/buyer/task")
